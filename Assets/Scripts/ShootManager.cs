@@ -5,23 +5,31 @@ using UnityEngine.UI;
 
 public enum ShootAnimState
 {
+	// 正常丟球模式
 	NORMAL = 0,
 	WAIT_FOR_SHOOT_ANIM,
 	FREEZE_FOR_SHOOT_ANIM,
 	SHOOT_ANIM,
 	WAIT_BALL_ANIM,
+
+	// 重播
+	REPLAY_ANIM,
 }
 
-public class ShootEvent : MonoBehaviour
+[RequireComponent(typeof(ReplayManager))]
+public class ShootManager : MonoBehaviour
 {
 	// 以上的
 	// 力道 5 都是最小力道
 	// 力道1 都是最大力道
 	[Header("===== Pinball =====")]
 	public GameObject		Ball;																	// 球
-	public GameObject		Pin;																	// 上方那根針的位置
+	public GameObject		Pin;																	// 下方推桿的位置
+	public GameObject		TopCapsule;																// 最上方真的位置
 	public Vector3			PowerSixLocation = new Vector3(-0.63f, -0.8930f, 0);					// 不使用時的位置
 	public Vector3			PowerOneLocation = new Vector3(-0.63f, -1.2530f, 0);					// 最大力道時的位置
+	public Vector2			TopCapsule_MinMaxHorizontal = new Vector2(-0.2690f, 0.2690f);			// 上方的水平位置 (最小、最大)
+	public Vector2			TopCapsule_MinMaxVertical = new Vector2(0.3180f, 0.5630f);				// 上方的垂直位置 (最小、最大)
 	public ShootAnimState	state = ShootAnimState.NORMAL;											// 狀態
 	public float			AddForce5 = 2000;														// 最小力道時的 Force
 	public float			AddForce1 = 5000;														// 最大力道時的 Force
@@ -31,12 +39,16 @@ public class ShootEvent : MonoBehaviour
 	public InputField		Angle0Field;
 	public InputField		Angle1Field;
 	public InputField		AutoTimesField;
+	public InputField		HorizontalField;
+	public InputField		VerticalField;
 
 	[Header("===== 演出相關 =====")]
 	private int				power = 5;
 	private float			angle = 0;
-	private int				autoTime = 1;
-	private float			currentTime = 0;
+	private int				autoTime = 1;															// 總共重播要幾次
+	private float			currentTime = 0;														// 目前重播是第幾次
+	private int				currentReplayFrame = 0;													// 目前重播到第幾個 frame
+	private int				ReplayIndex = 0;														// 重播哪一個檔案
 	private Vector3			BallFirstPos = Vector3.zero;
 	private Vector3			PinFirstPos = Vector3.zero;
 	private List<GameObject> BallList = new List<GameObject>();
@@ -45,6 +57,13 @@ public class ShootEvent : MonoBehaviour
 	public float			Shoot_Time = 0.5f;
 	public float			WaitBall_Time = 3;
 	private float			TimeCounter = 0;
+	private ReplayManager	ReplayM;
+	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                                     // 重播
+
+	private void Start()
+	{
+		ResetTopCapsule();
+	}
 
 	private void FixedUpdate()
 	{
@@ -69,6 +88,7 @@ public class ShootEvent : MonoBehaviour
 						TimeCounter = 0;
 						state = ShootAnimState.FREEZE_FOR_SHOOT_ANIM;
 					}
+					RecordCurrentBallData();
 					break;
 				}
 			case ShootAnimState.FREEZE_FOR_SHOOT_ANIM:
@@ -86,6 +106,7 @@ public class ShootEvent : MonoBehaviour
 						float cosForce = Mathf.Cos(angle * Mathf.Deg2Rad) * force;
 						BallList[BallList.Count - 1].GetComponent<Rigidbody>().AddForce(new Vector3(sinForce, cosForce, 0));
 					}
+					RecordCurrentBallData();
 					break;
 				}
 			case ShootAnimState.SHOOT_ANIM:
@@ -100,6 +121,7 @@ public class ShootEvent : MonoBehaviour
 						Pin.transform.position = PinFirstPos;
 						state = ShootAnimState.WAIT_BALL_ANIM;
 					}
+					RecordCurrentBallData();
 					break;
 				}
 			case ShootAnimState.WAIT_BALL_ANIM:
@@ -130,15 +152,44 @@ public class ShootEvent : MonoBehaviour
 							temp.transform.position = BallFirstPos;
 							BallList.Add(temp);
 
+							// 加重播清單
+							ReplayInfo.Add(new ReplayClass());
+
 							// 繼續
 							state = ShootAnimState.WAIT_FOR_SHOOT_ANIM;
 						}
+
+						// 重播選單更新
+						ReplayM.GenerateUIItem();
+					}
+					RecordCurrentBallData();
+					break;
+				}
+
+			// 重播
+			case ShootAnimState.REPLAY_ANIM:
+				{
+					BallList[0].transform.position = ReplayInfo[ReplayIndex].Position[currentReplayFrame];
+					Pin.transform.position = ReplayInfo[ReplayIndex].PinPosition[currentReplayFrame];
+					currentReplayFrame++;
+
+					if (currentReplayFrame >= ReplayInfo[ReplayIndex].Position.Count)
+					{
+						TimeCounter = 0;
+						currentReplayFrame = 0;
+						ReplayIndex = -1;
+
+
+						BallList[0].transform.position = BallFirstPos;
+
+						// 結束了
+						state = ShootAnimState.NORMAL;
 					}
 					break;
 				}
 		}
 	}
-
+	// 外部呼叫函示
 	public void Shoot()
 	{
 		if(state == ShootAnimState.NORMAL)
@@ -160,9 +211,77 @@ public class ShootEvent : MonoBehaviour
 				BallFirstPos = Ball.transform.position;
 				PinFirstPos = Pin.transform.position;
 				BallList.Add(Ball);
+
+				ReplayM = this.GetComponent<ReplayManager>();
 			}
+			ReplayInfo.Add(new ReplayClass());
 		}
+		//Debug.Log(TopCapsule.transform.position.ToString("F4"));
 		//Debug.Log(Pin.transform.position.ToString("F4"));
 	}
+	public void ResetTopCapsule()
+	{
+		int horizontalOffset = int.Parse(HorizontalField.text);
+		int verticalOffset = int.Parse(VerticalField.text);
 
+		float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y,	(float)(horizontalOffset + 5) / 10);    // 來回 -5 ~ 5 之間
+		float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x,	TopCapsule_MinMaxVertical.y,	(float)(verticalOffset + 5) / 10);      // 來回 -5 ~ 5 之間
+		TopCapsule.transform.position = new Vector3(x, y, TopCapsule.transform.position.z);
+	}
+	public void ExportOneFile()
+	{
+		int index = ReplayM.FocusIndex;
+		string json = JsonUtility.ToJson(ReplayInfo[index]);
+
+		if (!System.IO.Directory.Exists("Results"))
+			System.IO.Directory.CreateDirectory("Results");
+		string location = "Results/n" + index + ".txt";
+		System.IO.File.WriteAllText(location, json);
+		Debug.Log("輸出成功: " + location);
+	}
+	public void ExportAllFile()
+	{
+		if (!System.IO.Directory.Exists("Results"))
+			System.IO.Directory.CreateDirectory("Results");
+		for (int i = 0; i < ReplayInfo.Count; i++)
+		{
+			string json = JsonUtility.ToJson(ReplayInfo[i]);
+
+			string location = "Results/n" + i + ".txt";
+			System.IO.File.WriteAllText(location, json);
+		}
+		Debug.Log("全部輸出成功，共" + ReplayInfo.Count + "個");
+	}
+	public void Replay(int index)
+	{
+		if (state == ShootAnimState.NORMAL)
+		{
+			TimeCounter = 0;
+			currentReplayFrame = 0;
+			state = ShootAnimState.REPLAY_ANIM;
+
+			ReplayIndex = index;
+
+			BallList[0].GetComponent<Rigidbody>().useGravity = false;
+			BallList[0].transform.position = ReplayInfo[ReplayIndex].Position[0];
+			Pin.transform.position = ReplayInfo[ReplayIndex].PinPosition[0];
+		}
+	}
+	public void ResetUI()
+	{
+		HorizontalField.text = (0).ToString();
+		VerticalField.text = (0).ToString();
+		PowerField.text = (5).ToString();
+		Angle0Field.text = (-2).ToString();
+		Angle1Field.text = (2).ToString();
+		AutoTimesField.text = (1).ToString();
+	}
+
+	// 紀錄
+	private void RecordCurrentBallData()
+	{
+		var LastElement = ReplayInfo[ReplayInfo.Count - 1];
+		LastElement.Position.Add(BallList[BallList.Count - 1].transform.position);
+		LastElement.PinPosition.Add(Pin.transform.position);
+	}
 }

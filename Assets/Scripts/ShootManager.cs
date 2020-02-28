@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using SimpleFileBrowser;
 
 public enum ShootAnimState
 {
@@ -16,6 +17,15 @@ public enum ShootAnimState
 	REPLAY_ANIM,
 }
 
+public class TopCapsuleInfo
+{
+	public GameObject capsule;
+	public int HorizontalOffset = 0;
+	public int VerticalOffset = 0;
+
+	public int NameID = 0;
+}
+
 [RequireComponent(typeof(ReplayManager))]
 public class ShootManager : MonoBehaviour
 {
@@ -23,45 +33,68 @@ public class ShootManager : MonoBehaviour
 	// 力道 5 都是最小力道
 	// 力道1 都是最大力道
 	[Header("===== Pinball =====")]
-	public GameObject		Ball;																	// 球
-	public GameObject		Pin;																	// 下方推桿的位置
-	public GameObject		TopCapsule;																// 最上方真的位置
-	public Vector3			PowerSixLocation = new Vector3(-0.63f, -0.8930f, 0);					// 不使用時的位置
-	public Vector3			PowerOneLocation = new Vector3(-0.63f, -1.2530f, 0);					// 最大力道時的位置
-	public Vector2			TopCapsule_MinMaxHorizontal = new Vector2(-0.2690f, 0.2690f);			// 上方的水平位置 (最小、最大)
-	public Vector2			TopCapsule_MinMaxVertical = new Vector2(0.3180f, 0.5630f);				// 上方的垂直位置 (最小、最大)
-	public ShootAnimState	state = ShootAnimState.NORMAL;											// 狀態
-	public float			AddForce5 = 2000;														// 最小力道時的 Force
-	public float			AddForce1 = 5000;														// 最大力道時的 Force
+	public GameObject Ball;                                                             // 球
+	public GameObject Pin;																// 下方推桿的位置
+	public GameObject TopCapsule;                                                       // 最上方真的位置
+	public Vector3 PowerSixLocation = new Vector3(-0.63f, -0.8930f, 0);                 // 不使用時的位置
+	public Vector3 PowerOneLocation = new Vector3(-0.63f, -1.2530f, 0);                 // 最大力道時的位置
+	public Vector2 TopCapsule_MinMaxHorizontal = new Vector2(-0.2690f, 0.2690f);        // 上方的水平位置 (最小、最大)
+	public Vector2 TopCapsule_MinMaxVertical = new Vector2(0.3180f, 0.5630f);           // 上方的垂直位置 (最小、最大)
+	public ShootAnimState state = ShootAnimState.NORMAL;                                // 狀態
+	public float AddForce5 = 2000;                                                      // 最小力道時的 Force
+	public float AddForce1 = 5000;                                                      // 最大力道時的 Force
 
 	[Header("===== Params =====")]
-	public InputField		PowerField;
-	public InputField		Angle0Field;
-	public InputField		Angle1Field;
-	public InputField		AutoTimesField;
-	public InputField		HorizontalField;
-	public InputField		VerticalField;
+	public Dropdown TopCapsuleDD;
+	public InputField PowerField;
+	public InputField Angle0Field;
+	public InputField Angle1Field;
+	public InputField AutoTimesField;
+	public InputField HorizontalField;
+	public InputField VerticalField;
 
 	[Header("===== 演出相關 =====")]
-	private int				power = 5;
-	private float			angle = 0;
-	private int				autoTime = 1;															// 總共重播要幾次
-	private float			currentTime = 0;														// 目前重播是第幾次
-	private int				currentReplayFrame = 0;													// 目前重播到第幾個 frame
-	private int				ReplayIndex = 0;														// 重播哪一個檔案
-	private Vector3			BallFirstPos = Vector3.zero;
-	private Vector3			PinFirstPos = Vector3.zero;
-	private List<GameObject> BallList = new List<GameObject>();
-	public float			WaitForShoot_Time = 1.5f;
-	public float			Freeze_Shoot_Time = 0.5f;
-	public float			Shoot_Time = 0.5f;
-	public float			WaitBall_Time = 3;
-	private float			TimeCounter = 0;
-	private ReplayManager	ReplayM;
-	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                                     // 重播
+	private int power = 5;
+	private float angle = 0;
+	private int autoTime = 1;                                                           // 總共重播要幾次
+	private float currentTime = 0;                                                      // 目前重播是第幾次
+	private int currentReplayFrame = 0;                                                 // 目前重播到第幾個 frame
+	private int ReplayIndex = 0;                                                        // 重播哪一個檔案
+	private int SelectCapsuleIndex = 0;													// 目前選到的是哪一個 Capsule
+	private Vector3 BallFirstPos = Vector3.zero;
+	private Vector3 PinFirstPos = Vector3.zero;
+	private List<GameObject> BallList = new List<GameObject>();							// 球的 List
+	private List<TopCapsuleInfo> TopCapsuleList = new List<TopCapsuleInfo>();			// 針的數量
+	public float WaitForShoot_Time = 1.5f;
+	public float Freeze_Shoot_Time = 0.5f;
+	public float Shoot_Time = 0.5f;
+	public float WaitBall_Time = 3;
+	private float TimeCounter = 0;
+	private ReplayManager ReplayM;
+	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                       // 重播
 
 	private void Start()
 	{
+		// 初始給值
+		BallFirstPos = Ball.transform.position;
+		PinFirstPos = Pin.transform.position;
+		BallList.Add(Ball);
+		ReplayM = this.GetComponent<ReplayManager>();
+
+
+		// 上方設定
+		TopCapsule.SetActive(false);
+		int horizontalOffset = int.Parse(HorizontalField.text);
+		int verticalOffset = int.Parse(VerticalField.text);
+		TopCapsuleInfo tempInfo = new TopCapsuleInfo();
+		tempInfo.capsule = GameObject.Instantiate<GameObject>(TopCapsule);
+		tempInfo.HorizontalOffset = horizontalOffset;
+		tempInfo.VerticalOffset = verticalOffset;
+		tempInfo.capsule.SetActive(true);
+		tempInfo.capsule.transform.SetParent(TopCapsule.GetComponentInParent<Transform>());
+		tempInfo.NameID = 0;
+		TopCapsuleList.Add(tempInfo);
+
 		ResetTopCapsule();
 	}
 
@@ -70,7 +103,7 @@ public class ShootManager : MonoBehaviour
 		// 增加時間
 		TimeCounter += Time.deltaTime;
 		if (TimeCounter >= 10000)
-			TimeCounter = 0;		// 不要讓他抱調
+			TimeCounter = 0;        // 不要讓他抱調
 
 		// 跑每個 State 的動畫
 		switch (state)
@@ -100,7 +133,7 @@ public class ShootManager : MonoBehaviour
 						state = ShootAnimState.SHOOT_ANIM;
 
 						// 加力量
-						float t = 1-  power / 5;
+						float t = 1 - power / 5;
 						float force = Mathf.Lerp(AddForce5, AddForce1, t);
 						float sinForce = Mathf.Sin(angle * Mathf.Deg2Rad) * force;
 						float cosForce = Mathf.Cos(angle * Mathf.Deg2Rad) * force;
@@ -192,7 +225,7 @@ public class ShootManager : MonoBehaviour
 	// 外部呼叫函示
 	public void Shoot()
 	{
-		if(state == ShootAnimState.NORMAL)
+		if (state == ShootAnimState.NORMAL)
 		{
 			TimeCounter = 0;
 			currentTime = 0;
@@ -205,29 +238,97 @@ public class ShootManager : MonoBehaviour
 			angle = Random.Range(temp1, temp2);
 			autoTime = int.Parse(AutoTimesField.text);
 
-			// 初始給值
-			if (BallFirstPos == Vector3.zero)
-			{
-				BallFirstPos = Ball.transform.position;
-				PinFirstPos = Pin.transform.position;
-				BallList.Add(Ball);
-
-				ReplayM = this.GetComponent<ReplayManager>();
-			}
 			ReplayInfo.Add(new ReplayClass());
 		}
 		//Debug.Log(TopCapsule.transform.position.ToString("F4"));
 		//Debug.Log(Pin.transform.position.ToString("F4"));
 	}
+
+
+	// Top Capsule 相關
+	public void AddTopCapsule()
+	{
+		int lastText = TopCapsuleList[TopCapsuleList.Count - 1].NameID;
+		TopCapsuleDD.options.Add(new Dropdown.OptionData(text: (lastText + 1).ToString()));
+
+		TopCapsuleInfo tempInfo = new TopCapsuleInfo();
+		tempInfo.capsule = GameObject.Instantiate<GameObject>(TopCapsule);
+		tempInfo.HorizontalOffset = 0;
+		tempInfo.VerticalOffset = 0;
+		tempInfo.capsule.SetActive(true);
+		tempInfo.capsule.transform.SetParent(TopCapsule.GetComponentInParent<Transform>());
+		tempInfo.NameID = lastText + 1;
+		TopCapsuleList.Add(tempInfo);
+
+		// 改變 List
+		HorizontalField.text = "0";
+		VerticalField.text = "0";
+		SelectCapsuleIndex = TopCapsuleList.Count - 1;
+		TopCapsuleDD.value = SelectCapsuleIndex;
+
+		ResetTopCapsule();
+	}
+	public void DeleteTopCapsule()
+	{
+		if (TopCapsuleList.Count > 1)
+		{
+			GameObject.Destroy(TopCapsuleList[SelectCapsuleIndex].capsule);
+
+			TopCapsuleList.RemoveAt(SelectCapsuleIndex);
+			TopCapsuleDD.options.RemoveAt(SelectCapsuleIndex);
+
+			if (TopCapsuleList.Count == SelectCapsuleIndex)
+				SelectCapsuleIndex--;
+
+			TopCapsuleDD.captionText.text = TopCapsuleDD.options[SelectCapsuleIndex].text;
+
+			HorizontalField.text = TopCapsuleList[SelectCapsuleIndex].HorizontalOffset.ToString();
+			VerticalField.text = TopCapsuleList[SelectCapsuleIndex].VerticalOffset.ToString();
+		}
+	}
+	public void ChangeIndexTopCapsule()
+	{
+		SelectCapsuleIndex = TopCapsuleDD.value;
+		if (TopCapsuleList.Count > SelectCapsuleIndex)
+		{
+			TopCapsuleInfo info = TopCapsuleList[SelectCapsuleIndex];
+
+			HorizontalField.text = info.HorizontalOffset.ToString();
+			VerticalField.text = info.VerticalOffset.ToString();
+
+		}
+	}
 	public void ResetTopCapsule()
 	{
-		int horizontalOffset = int.Parse(HorizontalField.text);
-		int verticalOffset = int.Parse(VerticalField.text);
+		if (TopCapsuleList.Count > SelectCapsuleIndex)
+		{
+			TopCapsuleInfo info = TopCapsuleList[SelectCapsuleIndex];
+			int horizontalOffset = info.HorizontalOffset;
+			int verticalOffset = info.VerticalOffset;
 
-		float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y,	(float)(horizontalOffset + 5) / 10);    // 來回 -5 ~ 5 之間
-		float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x,	TopCapsule_MinMaxVertical.y,	(float)(verticalOffset + 5) / 10);      // 來回 -5 ~ 5 之間
-		TopCapsule.transform.position = new Vector3(x, y, TopCapsule.transform.position.z);
+			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 5) / 10);    // 來回 -5 ~ 5 之間
+			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, (float)(verticalOffset + 5) / 10);      // 來回 -5 ~ 5 之間
+			info.capsule.transform.position = new Vector3(x, y, info.capsule.transform.position.z);
+		}
 	}
+	public void MoveTopCapsule()
+	{
+		if (TopCapsuleList.Count > SelectCapsuleIndex)
+		{
+			TopCapsuleInfo info = TopCapsuleList[SelectCapsuleIndex];
+
+			int horizontalOffset = int.Parse(HorizontalField.text);
+			int verticalOffset = int.Parse(VerticalField.text);
+			info.HorizontalOffset = horizontalOffset;
+			info.VerticalOffset = verticalOffset;
+
+			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 5) / 10);    // 來回 -5 ~ 5 之間
+			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, (float)(verticalOffset + 5) / 10);      // 來回 -5 ~ 5 之間
+			info.capsule.transform.position = new Vector3(x, y, info.capsule.transform.position.z);
+		}
+	}
+
+	// 輸出相關的東西
 	public void ExportOneFile()
 	{
 		int index = ReplayM.FocusIndex;
@@ -251,6 +352,28 @@ public class ShootManager : MonoBehaviour
 			System.IO.File.WriteAllText(location, json);
 		}
 		Debug.Log("全部輸出成功，共" + ReplayInfo.Count + "個");
+	}
+	public void ImportFile()
+	{
+		string initLocation = "./Results";
+#if UNITY_EDITOR
+		initLocation = "./Builds/Results";
+#endif
+		FileBrowser.ShowLoadDialog(
+			delegate (string path)
+			{
+				string txt = System.IO.File.ReadAllText(path);
+				ReplayClass temp = JsonUtility.FromJson<ReplayClass>(txt);
+
+				ReplayInfo.Add(temp);
+				ReplayM.GenerateUIItem();
+			},                                                                                  // 按下成功時 
+			delegate () { Debug.Log("Canceled"); },                                             // 取消
+			false,                                                                              // 是否選擇資料夾
+			initLocation,																		// 初始位置
+			"選擇檔案",                                                                         // Title 顯示名稱
+			"選擇"                                                                              // submit 按鈕名稱
+		);
 	}
 	public void Replay(int index)
 	{
@@ -276,6 +399,7 @@ public class ShootManager : MonoBehaviour
 		Angle1Field.text = (2).ToString();
 		AutoTimesField.text = (1).ToString();
 	}
+
 
 	// 紀錄
 	private void RecordCurrentBallData()

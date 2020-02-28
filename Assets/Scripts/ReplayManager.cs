@@ -53,6 +53,15 @@ public class ReplayManager : MonoBehaviour
 			}
 		);
 
+		// 增加刪除的動作
+		tempBtn = trans[4].gameObject.GetComponent<Button>();
+		tempBtn.onClick.AddListener(
+			delegate ()
+			{
+				ReplayItemDelete(tempIndex);
+			}
+		);
+
 		UIGroupList.Add(temp);
 
 		// Focus 在最後一個
@@ -64,8 +73,14 @@ public class ReplayManager : MonoBehaviour
 		FocusIndex = i;
 		ReFocusUI();
 	}
+	public void ReplayItemDelete(int i)
+	{
+		if (FocusIndex == i)
+			FocusIndex = i - 1;
+		UIGroupList[i].SetActive(false);	// 消失
+		ReFocusUI();
+	}
 
-	//public void Save
 	// Helper Function
 	private void ReFocusUI()
 	{

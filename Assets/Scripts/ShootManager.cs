@@ -52,6 +52,24 @@ public class ShootManager : MonoBehaviour
 	public InputField AutoTimesField;
 	public InputField HorizontalField;
 	public InputField VerticalField;
+	public InputField TopcapsuleBouncinessField;
+	public InputField TopcapsuleFractionField;
+	public InputField GroupBouncinessField;
+	public InputField GroupFractionField;
+	public InputField BallBouncinessField;
+	public InputField BallFractionField;
+	public InputField SeparateLineBouncinessField;
+	public InputField SeparateLineFractionField;
+	public InputField GravityField;
+	public InputField HitPinBouncinessField;
+	public InputField HitPinFractionField;
+
+	[Header("===== Physic Material =====")]
+	public PhysicMaterial TopcapsulePM;
+	public PhysicMaterial GroupPM;
+	public PhysicMaterial BallPM;
+	public PhysicMaterial SeparateLinePM;
+	public PhysicMaterial HitPinPM;
 
 	[Header("===== 演出相關 =====")]
 	private int power = 5;
@@ -71,7 +89,9 @@ public class ShootManager : MonoBehaviour
 	public float WaitBall_Time = 3;
 	private float TimeCounter = 0;
 	private ReplayManager ReplayM;
-	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                       // 重播
+	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                     // 重播
+	private const int MinMass = 5;														// 重力參數
+	private const int MaxMass = 15;														// 重力參數
 
 	private void Start()
 	{
@@ -80,7 +100,6 @@ public class ShootManager : MonoBehaviour
 		PinFirstPos = Pin.transform.position;
 		BallList.Add(Ball);
 		ReplayM = this.GetComponent<ReplayManager>();
-
 
 		// 上方設定
 		TopCapsule.SetActive(false);
@@ -95,7 +114,8 @@ public class ShootManager : MonoBehaviour
 		tempInfo.NameID = 0;
 		TopCapsuleList.Add(tempInfo);
 
-		ResetTopCapsule();
+		MoveTopCapsule();
+		ResetPhysicMaterial();
 	}
 
 	private void FixedUpdate()
@@ -214,6 +234,7 @@ public class ShootManager : MonoBehaviour
 
 
 						BallList[0].transform.position = BallFirstPos;
+						BallList[0].GetComponent<Rigidbody>().useGravity = true;
 
 						// 結束了
 						state = ShootAnimState.NORMAL;
@@ -230,6 +251,7 @@ public class ShootManager : MonoBehaviour
 			TimeCounter = 0;
 			currentTime = 0;
 			state = ShootAnimState.WAIT_FOR_SHOOT_ANIM;
+			
 
 			// 拿值
 			power = int.Parse(PowerField.text);
@@ -266,7 +288,7 @@ public class ShootManager : MonoBehaviour
 		SelectCapsuleIndex = TopCapsuleList.Count - 1;
 		TopCapsuleDD.value = SelectCapsuleIndex;
 
-		ResetTopCapsule();
+		MoveTopCapsule();
 	}
 	public void DeleteTopCapsule()
 	{
@@ -298,19 +320,6 @@ public class ShootManager : MonoBehaviour
 
 		}
 	}
-	public void ResetTopCapsule()
-	{
-		if (TopCapsuleList.Count > SelectCapsuleIndex)
-		{
-			TopCapsuleInfo info = TopCapsuleList[SelectCapsuleIndex];
-			int horizontalOffset = info.HorizontalOffset;
-			int verticalOffset = info.VerticalOffset;
-
-			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 5) / 10);    // 來回 -5 ~ 5 之間
-			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, (float)(verticalOffset + 5) / 10);      // 來回 -5 ~ 5 之間
-			info.capsule.transform.position = new Vector3(x, y, info.capsule.transform.position.z);
-		}
-	}
 	public void MoveTopCapsule()
 	{
 		if (TopCapsuleList.Count > SelectCapsuleIndex)
@@ -322,10 +331,67 @@ public class ShootManager : MonoBehaviour
 			info.HorizontalOffset = horizontalOffset;
 			info.VerticalOffset = verticalOffset;
 
-			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 5) / 10);    // 來回 -5 ~ 5 之間
-			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, (float)(verticalOffset + 5) / 10);      // 來回 -5 ~ 5 之間
+			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 10) / 20);	// 來回 -10 ~ 10 之間
+			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, 1 - (float)(verticalOffset) / 15);			// 來回 0 ~ 15 之間
 			info.capsule.transform.position = new Vector3(x, y, info.capsule.transform.position.z);
 		}
+	}
+	
+	// 設定彈性相關係數
+	public void ResetPhysicMaterial()
+	{
+		#region 變數宣告
+		float BouncinessLevel = 0;
+		float FractionLevel = 0;
+
+		const int MAX_LEVEL = 5;
+		#endregion
+		#region 釘子
+		BouncinessLevel				= Mathf.Clamp01(float.Parse(TopcapsuleBouncinessField.text) / MAX_LEVEL);
+		FractionLevel				= Mathf.Clamp01(float.Parse(TopcapsuleFractionField.text) / MAX_LEVEL);
+
+		TopcapsulePM.dynamicFriction= FractionLevel;
+		TopcapsulePM.staticFriction	= FractionLevel;
+		TopcapsulePM.bounciness		= BouncinessLevel;
+		#endregion
+		#region 框架
+		BouncinessLevel				= Mathf.Clamp01(float.Parse(GroupBouncinessField.text) / MAX_LEVEL);
+		FractionLevel				= Mathf.Clamp01(float.Parse(GroupFractionField.text) / MAX_LEVEL);
+
+		GroupPM.dynamicFriction		= FractionLevel;
+		GroupPM.staticFriction		= FractionLevel;
+		GroupPM.bounciness			= BouncinessLevel;
+		#endregion
+		#region 球
+		BouncinessLevel				= Mathf.Clamp01(float.Parse(BallBouncinessField.text) / MAX_LEVEL);
+		FractionLevel				= Mathf.Clamp01(float.Parse(BallFractionField.text) / MAX_LEVEL);
+
+		BallPM.dynamicFriction		= FractionLevel;
+		BallPM.staticFriction		= FractionLevel;
+		BallPM.bounciness			= BouncinessLevel;
+		#endregion
+		#region 分割線
+		BouncinessLevel				= Mathf.Clamp01(float.Parse(SeparateLineBouncinessField.text) / MAX_LEVEL);
+		FractionLevel				= Mathf.Clamp01(float.Parse(SeparateLineFractionField.text) / MAX_LEVEL);
+
+		SeparateLinePM.dynamicFriction= FractionLevel;
+		SeparateLinePM.staticFriction= FractionLevel;
+		SeparateLinePM.bounciness	= BouncinessLevel;
+		#endregion
+		#region 重力
+		int gravityLevel = int.Parse(GravityField.text);
+
+		gravityLevel = Mathf.Clamp(gravityLevel, 1, 5);
+		Ball.GetComponent<Rigidbody>().mass = (MaxMass - MinMass) * gravityLevel / 4 + MinMass;
+		#endregion
+		#region 撞針
+		BouncinessLevel				= Mathf.Clamp01(float.Parse(HitPinBouncinessField.text) / MAX_LEVEL);
+		FractionLevel				= Mathf.Clamp01(float.Parse(HitPinFractionField .text) / MAX_LEVEL);
+
+		HitPinPM.dynamicFriction	= FractionLevel;
+		HitPinPM.staticFriction		= FractionLevel;
+		HitPinPM.bounciness			= BouncinessLevel;
+		#endregion
 	}
 
 	// 輸出相關的東西

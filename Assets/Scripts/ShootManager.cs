@@ -86,8 +86,10 @@ public class ShootManager : MonoBehaviour
 	public float WaitForShoot_Time = 1.5f;
 	public float Freeze_Shoot_Time = 0.5f;
 	public float Shoot_Time = 0.5f;
-	public float WaitBall_Time = 3;
+	public float WaitBall_Time = 1;
+	private Vector3 LastBallPos;
 	private float TimeCounter = 0;
+	private float LastTimeCounter = 0;
 	private ReplayManager ReplayM;
 	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                     // 重播
 	private const int MinMass = 5;														// 重力參數
@@ -165,7 +167,7 @@ public class ShootManager : MonoBehaviour
 			case ShootAnimState.SHOOT_ANIM:
 				{
 					float t = Mathf.Clamp01(TimeCounter /= Shoot_Time);
-					Pin.transform.position = Vector3.Lerp(Pin.transform.position, PinFirstPos, t);
+					Pin.transform.position = Vector3.Lerp(Pin.transform.position, PinFirstPos, t * t * t);
 
 					// 判斷是否超過
 					if (TimeCounter >= Shoot_Time)
@@ -180,12 +182,15 @@ public class ShootManager : MonoBehaviour
 			case ShootAnimState.WAIT_BALL_ANIM:
 				{
 					// 判斷是否超過
-					if (TimeCounter >= WaitBall_Time)
+					if (LastTimeCounter >= WaitBall_Time)
 					{
 						TimeCounter = 0;
+						LastTimeCounter = 0;
+						LastBallPos = BallFirstPos;
 
 						// 重製一顆球
 						currentTime++;
+						BallList[BallList.Count - 1].GetComponent<Rigidbody>().velocity = Vector3.zero;
 						if (currentTime == autoTime)
 						{
 							for (int i = BallList.Count - 1; i >= 1; i--)
@@ -214,6 +219,14 @@ public class ShootManager : MonoBehaviour
 
 						// 重播選單更新
 						ReplayM.GenerateUIItem();
+					}
+					else if (Vector3.Distance(LastBallPos, BallList[BallList.Count - 1].transform.position) <= 0.1f)
+						// 加時間
+						LastTimeCounter += Time.deltaTime;
+					else
+					{
+						LastTimeCounter = 0;
+						LastBallPos = BallList[BallList.Count - 1].transform.position;
 					}
 					RecordCurrentBallData();
 					break;
@@ -331,8 +344,8 @@ public class ShootManager : MonoBehaviour
 			info.HorizontalOffset = horizontalOffset;
 			info.VerticalOffset = verticalOffset;
 
-			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 10) / 20);	// 來回 -10 ~ 10 之間
-			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, 1 - (float)(verticalOffset) / 15);			// 來回 0 ~ 15 之間
+			float x = Mathf.Lerp(TopCapsule_MinMaxHorizontal.x, TopCapsule_MinMaxHorizontal.y, (float)(horizontalOffset + 20) / 40);	// 來回 -20 ~ 20 之間
+			float y = Mathf.Lerp(TopCapsule_MinMaxVertical.x, TopCapsule_MinMaxVertical.y, 1 - (float)(verticalOffset) / 30);			// 來回 0 ~ 30 之間
 			info.capsule.transform.position = new Vector3(x, y, info.capsule.transform.position.z);
 		}
 	}

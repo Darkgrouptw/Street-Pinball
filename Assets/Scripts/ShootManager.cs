@@ -76,7 +76,6 @@ public class ShootManager : MonoBehaviour
 	private float angle = 0;
 	private int autoTime = 1;                                                           // 總共重播要幾次
 	private float currentTime = 0;                                                      // 目前重播是第幾次
-	private int currentReplayFrame = 0;                                                 // 目前重播到第幾個 frame
 	private int ReplayIndex = 0;                                                        // 重播哪一個檔案
 	private int SelectCapsuleIndex = 0;													// 目前選到的是哪一個 Capsule
 	private Vector3 BallFirstPos = Vector3.zero;
@@ -88,8 +87,10 @@ public class ShootManager : MonoBehaviour
 	public float Shoot_Time = 0.5f;
 	public float WaitBall_Time = 1;
 	private Vector3 LastBallPos;
-	private float TimeCounter = 0;
-	private float LastTimeCounter = 0;
+	private float TimeCounter = 0;														// 判斷狀態轉換的計數器
+	private float WorldTimeCounter = 0;													// 重播紀錄，與使用的計數器
+	private float LastTimeCounter = 0;                                                  // 維持停止的計數器
+	private int LastSearchIndex = 0;													// 前 Index 的 Frame 總共多少時間
 	private ReplayManager ReplayM;
 	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                     // 重播
 	private const int MinMass = 5;														// 重力參數
@@ -120,12 +121,64 @@ public class ShootManager : MonoBehaviour
 		ResetPhysicMaterial();
 	}
 
+	private void Update()
+	{
+		switch (state)
+		{
+			// 重播
+			case ShootAnimState.REPLAY_ANIM:
+				{
+					WorldTimeCounter += Time.deltaTime;
+
+					bool IsFind = false;
+					for(int i = LastSearchIndex; i < ReplayInfo[ReplayIndex].TimeTick.Count - 1; i++)
+					{
+						float CurrentTimeTick		= ReplayInfo[ReplayIndex].TimeTick[i + 0];
+						float NextTimeTick			= ReplayInfo[ReplayIndex].TimeTick[i + 1];
+						if (CurrentTimeTick <= WorldTimeCounter && WorldTimeCounter <= NextTimeTick)
+						{
+							IsFind = true;
+							Vector3 CurrentBallPos	= ReplayInfo[ReplayIndex].Position[i + 0];
+							Vector3 NextBallPos		= ReplayInfo[ReplayIndex].Position[i + 1];
+							Vector3 CurrentPinPos	= ReplayInfo[ReplayIndex].PinPosition[i + 0];
+							Vector3 NextPinPos		= ReplayInfo[ReplayIndex].PinPosition[i + 1];
+							float t = Mathf.Clamp01((WorldTimeCounter - CurrentTimeTick) / Mathf.Max(NextTimeTick - CurrentTimeTick, 0.0001f));
+
+							// 設定位置
+							BallList[0].transform.position	= Vector3.Lerp(CurrentBallPos, NextBallPos, t);
+							Pin.transform.position			= Vector3.Lerp(CurrentPinPos, NextPinPos, t);
+							LastSearchIndex = i;
+							break;
+						}
+					}
+					if (!IsFind)
+					{
+						TimeCounter = 0;
+						WorldTimeCounter = 0;
+						ReplayIndex = -1;
+
+
+						BallList[0].transform.position = BallFirstPos;
+						BallList[0].GetComponent<Rigidbody>().useGravity = true;
+
+						// 結束了
+						state = ShootAnimState.NORMAL;
+					}
+					break;
+				}
+		}
+	}
+
 	private void FixedUpdate()
 	{
 		// 增加時間
-		TimeCounter += Time.deltaTime;
+		TimeCounter += Time.fixedDeltaTime;
 		if (TimeCounter >= 10000)
 			TimeCounter = 0;        // 不要讓他抱調
+
+		// 只要他還在跑的時候
+		if (state >= ShootAnimState.WAIT_FOR_SHOOT_ANIM && state <= ShootAnimState.WAIT_BALL_ANIM)
+			WorldTimeCounter += Time.fixedDeltaTime;
 
 		// 跑每個 State 的動畫
 		switch (state)
@@ -185,6 +238,7 @@ public class ShootManager : MonoBehaviour
 					if (LastTimeCounter >= WaitBall_Time)
 					{
 						TimeCounter = 0;
+						WorldTimeCounter = 0;
 						LastTimeCounter = 0;
 						LastBallPos = BallFirstPos;
 
@@ -231,29 +285,6 @@ public class ShootManager : MonoBehaviour
 					RecordCurrentBallData();
 					break;
 				}
-
-			// 重播
-			case ShootAnimState.REPLAY_ANIM:
-				{
-					BallList[0].transform.position = ReplayInfo[ReplayIndex].Position[currentReplayFrame];
-					Pin.transform.position = ReplayInfo[ReplayIndex].PinPosition[currentReplayFrame];
-					currentReplayFrame++;
-
-					if (currentReplayFrame >= ReplayInfo[ReplayIndex].Position.Count)
-					{
-						TimeCounter = 0;
-						currentReplayFrame = 0;
-						ReplayIndex = -1;
-
-
-						BallList[0].transform.position = BallFirstPos;
-						BallList[0].GetComponent<Rigidbody>().useGravity = true;
-
-						// 結束了
-						state = ShootAnimState.NORMAL;
-					}
-					break;
-				}
 		}
 	}
 	// 外部呼叫函示
@@ -262,6 +293,7 @@ public class ShootManager : MonoBehaviour
 		if (state == ShootAnimState.NORMAL)
 		{
 			TimeCounter = 0;
+			WorldTimeCounter = 0;
 			currentTime = 0;
 			state = ShootAnimState.WAIT_FOR_SHOOT_ANIM;
 			
@@ -274,6 +306,7 @@ public class ShootManager : MonoBehaviour
 			autoTime = int.Parse(AutoTimesField.text);
 
 			ReplayInfo.Add(new ReplayClass());
+			RecordCurrentBallData();
 		}
 		//Debug.Log(TopCapsule.transform.position.ToString("F4"));
 		//Debug.Log(Pin.transform.position.ToString("F4"));
@@ -459,7 +492,8 @@ public class ShootManager : MonoBehaviour
 		if (state == ShootAnimState.NORMAL)
 		{
 			TimeCounter = 0;
-			currentReplayFrame = 0;
+			WorldTimeCounter = 0;
+			LastSearchIndex = 0;
 			state = ShootAnimState.REPLAY_ANIM;
 
 			ReplayIndex = index;
@@ -486,5 +520,6 @@ public class ShootManager : MonoBehaviour
 		var LastElement = ReplayInfo[ReplayInfo.Count - 1];
 		LastElement.Position.Add(BallList[BallList.Count - 1].transform.position);
 		LastElement.PinPosition.Add(Pin.transform.position);
+		LastElement.TimeTick.Add(WorldTimeCounter);
 	}
 }

@@ -521,5 +521,6 @@ public class ShootManager : MonoBehaviour
 		LastElement.Position.Add(BallList[BallList.Count - 1].transform.position);
 		LastElement.PinPosition.Add(Pin.transform.position);
 		LastElement.TimeTick.Add(WorldTimeCounter);
+		LastElement.Velocity.Add(BallList[BallList.Count - 1].GetComponent<Rigidbody>().velocity);
 	}
 }

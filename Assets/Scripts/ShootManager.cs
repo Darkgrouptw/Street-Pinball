@@ -43,10 +43,13 @@ public class ShootManager : MonoBehaviour
 	public ShootAnimState state = ShootAnimState.NORMAL;                                // 狀態
 	public float AddForce5 = 2000;                                                      // 最小力道時的 Force
 	public float AddForce1 = 5000;                                                      // 最大力道時的 Force
+	public float PushForce5 = 500;
+	public float PushForce1 = 1000;
 
 	[Header("===== Params =====")]
 	public Dropdown TopCapsuleDD;
 	public InputField PowerField;
+	public InputField PushPowerField;
 	public InputField Angle0Field;
 	public InputField Angle1Field;
 	public InputField AutoTimesField;
@@ -73,6 +76,7 @@ public class ShootManager : MonoBehaviour
 
 	[Header("===== 演出相關 =====")]
 	private int power = 5;
+	private int pushpower = 5;
 	private float angle = 0;
 	private int autoTime = 1;                                                           // 總共重播要幾次
 	private float currentTime = 0;                                                      // 目前重播是第幾次
@@ -208,8 +212,9 @@ public class ShootManager : MonoBehaviour
 						state = ShootAnimState.SHOOT_ANIM;
 
 						// 加力量
-						float t = 1 - power / 5;
-						float force = Mathf.Lerp(AddForce5, AddForce1, t);
+						float t = 1 - (float)power / 5;
+						float pusht = 1 - (float)pushpower / 5;
+						float force = Mathf.Lerp(AddForce5, AddForce1, t) + Mathf.Lerp(PushForce5, PushForce1, pusht);
 						float sinForce = Mathf.Sin(angle * Mathf.Deg2Rad) * force;
 						float cosForce = Mathf.Cos(angle * Mathf.Deg2Rad) * force;
 						BallList[BallList.Count - 1].GetComponent<Rigidbody>().AddForce(new Vector3(sinForce, cosForce, 0));
@@ -297,9 +302,9 @@ public class ShootManager : MonoBehaviour
 			currentTime = 0;
 			state = ShootAnimState.WAIT_FOR_SHOOT_ANIM;
 			
-
 			// 拿值
 			power = int.Parse(PowerField.text);
+			pushpower = int.Parse(PushPowerField.text);
 			float temp1 = float.Parse(Angle0Field.text);
 			float temp2 = float.Parse(Angle1Field.text);
 			angle = Random.Range(temp1, temp2);

@@ -23,7 +23,7 @@ public class ReplayManager : MonoBehaviour
 	}
 
 	// 其他人要產生物件時，所跑來的事件
-	public void GenerateUIItem()
+	public string GenerateUIItem(int Power, int WinAreaNumber)
 	{
 		GameObject temp = GameObject.Instantiate(UIGroup);
 		temp.SetActive(true);
@@ -32,8 +32,56 @@ public class ReplayManager : MonoBehaviour
 		// 拿底下所有的物件做更改
 		Transform[] trans = temp.GetComponentsInChildren<Transform>(true);
 		Text tempText = trans[1].gameObject.GetComponent<Text>();
-		tempText.text = "n" + CurrentIndex.ToString();
+		string uiname = Power.ToString() + "-" + WinAreaNumber.ToString() + "-n" + CurrentIndex.ToString();
+		tempText.text = uiname;
 		CurrentIndex++;
+
+		// Focus 事件
+		int tempIndex = CurrentIndex - 1;
+		trans[0].GetComponent<Button>().onClick.AddListener(
+			delegate ()
+			{
+				ReplayItemClick(tempIndex);
+			}
+		);
+
+		// 增加播放的動作
+		Button tempBtn = trans[2].gameObject.GetComponent<Button>();
+		tempBtn.onClick.AddListener(
+			delegate ()
+			{
+				ShootM.Replay(tempIndex);
+			}
+		);
+
+		// 增加刪除的動作
+		tempBtn = trans[4].gameObject.GetComponent<Button>();
+		tempBtn.onClick.AddListener(
+			delegate ()
+			{
+				ReplayItemDelete(tempIndex);
+			}
+		);
+
+		UIGroupList.Add(temp);
+
+		// Focus 在最後一個
+		FocusIndex = UIGroupList.Count - 1;
+		ReFocusUI();
+		return uiname;
+	}
+	public void GenerateUIItem(int Power, int WinAreaNumber, int RecordIndex)
+	{
+		GameObject temp = GameObject.Instantiate(UIGroup);
+		temp.SetActive(true);
+		temp.transform.SetParent(UIGroup.transform.parent);
+
+		// 拿底下所有的物件做更改
+		Transform[] trans = temp.GetComponentsInChildren<Transform>(true);
+		Text tempText = trans[1].gameObject.GetComponent<Text>();
+		string uiname = "n" + Power.ToString() + "-" + WinAreaNumber.ToString() + "-" + RecordIndex.ToString();
+		tempText.text = uiname;
+		CurrentIndex = Mathf.Max(CurrentIndex, RecordIndex + 1);
 
 		// Focus 事件
 		int tempIndex = CurrentIndex - 1;
@@ -78,6 +126,7 @@ public class ReplayManager : MonoBehaviour
 		if (FocusIndex == i)
 			FocusIndex = i - 1;
 		UIGroupList[i].SetActive(false);	// 消失
+		//UIGroupList.RemoveAt(i);			// 直接砍掉
 		ReFocusUI();
 	}
 

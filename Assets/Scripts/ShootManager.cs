@@ -96,9 +96,10 @@ public class ShootManager : MonoBehaviour
 	private float LastTimeCounter = 0;                                                  // 維持停止的計數器
 	private int LastSearchIndex = 0;													// 前 Index 的 Frame 總共多少時間
 	private ReplayManager ReplayM;
-	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();                     // 重播
+	private List<ReplayClass> ReplayInfo = new List<ReplayClass>();						// 重播
 	private const int MinMass = 5;														// 重力參數
-	private const int MaxMass = 15;														// 重力參數
+	private const int MaxMass = 15;                                                     // 重力參數
+	public int WinAreaNumber = 1;														// 中獎區編號
 
 	private void Start()
 	{
@@ -250,6 +251,11 @@ public class ShootManager : MonoBehaviour
 						// 重製一顆球
 						currentTime++;
 						BallList[BallList.Count - 1].GetComponent<Rigidbody>().velocity = Vector3.zero;
+
+						// 重播選單更新
+						ReplayInfo[ReplayInfo.Count - 1].WinAreaNumber = WinAreaNumber;
+						ReplayInfo[ReplayInfo.Count - 1].Name = ReplayM.GenerateUIItem(power, WinAreaNumber);
+
 						if (currentTime == autoTime)
 						{
 							for (int i = BallList.Count - 1; i >= 1; i--)
@@ -275,9 +281,6 @@ public class ShootManager : MonoBehaviour
 							// 繼續
 							state = ShootAnimState.WAIT_FOR_SHOOT_ANIM;
 						}
-
-						// 重播選單更新
-						ReplayM.GenerateUIItem();
 					}
 					else if (Vector3.Distance(LastBallPos, BallList[BallList.Count - 1].transform.position) <= 0.1f)
 						// 加時間
@@ -310,7 +313,35 @@ public class ShootManager : MonoBehaviour
 			angle = Random.Range(temp1, temp2);
 			autoTime = int.Parse(AutoTimesField.text);
 
-			ReplayInfo.Add(new ReplayClass());
+			// 填直到 Record
+			ReplayClass replay = new ReplayClass();
+			replay.Params.Power = power;
+			replay.Params.PushPower = pushpower;
+			replay.Params.Angle = angle;
+
+			replay.Params.TopCapsuleList.Clear();
+			for (int i = 0; i < TopCapsuleList.Count; i++)
+			{
+				TopCapsuleRecord record = new TopCapsuleRecord();
+				record.HorizontalOffset = TopCapsuleList[i].HorizontalOffset;
+				record.VerticalOffset = TopCapsuleList[i].VerticalOffset;
+				replay.Params.TopCapsuleList.Add(record);
+			}
+
+			// 物理相關參數
+			replay.Params.TopcapsuleBounciness		= float.Parse(TopcapsuleBouncinessField.text);
+			replay.Params.TopcapsuleFraction		= float.Parse(TopcapsuleFractionField.text);
+			replay.Params.GroupBounciness			= float.Parse(GroupBouncinessField.text);
+			replay.Params.GroupFraction				= float.Parse(GroupFractionField.text);
+			replay.Params.BallBounciness			= float.Parse(BallBouncinessField.text);
+			replay.Params.BallFraction				= float.Parse(BallFractionField.text);
+			replay.Params.SeparateLineBounciness	= float.Parse(SeparateLineBouncinessField.text);
+			replay.Params.SeparateLineFraction		= float.Parse(SeparateLineFractionField.text);
+			replay.Params.Gravity					= float.Parse(GravityField.text);
+			replay.Params.HitPinBounciness			= float.Parse(HitPinBouncinessField.text);
+			replay.Params.HitPinFraction			= float.Parse(HitPinFractionField.text);
+			ReplayInfo.Add(replay);
+
 			RecordCurrentBallData();
 		}
 		//Debug.Log(TopCapsule.transform.position.ToString("F4"));
@@ -430,7 +461,7 @@ public class ShootManager : MonoBehaviour
 		SeparateLinePM.bounciness	= BouncinessLevel;
 		#endregion
 		#region 重力
-		int gravityLevel = int.Parse(GravityField.text);
+		float gravityLevel = float.Parse(GravityField.text);
 
 		gravityLevel = Mathf.Clamp(gravityLevel, 1, 5);
 		Ball.GetComponent<Rigidbody>().mass = (MaxMass - MinMass) * gravityLevel / 4 + MinMass;
@@ -453,7 +484,8 @@ public class ShootManager : MonoBehaviour
 
 		if (!System.IO.Directory.Exists("Results"))
 			System.IO.Directory.CreateDirectory("Results");
-		string location = "Results/n" + index + ".txt";
+		//string location = "Results/n" + index + ".txt";
+		string location = "Results/" + ReplayInfo[index].Name + ".txt";
 		System.IO.File.WriteAllText(location, json);
 		Debug.Log("輸出成功: " + location);
 	}
@@ -465,7 +497,7 @@ public class ShootManager : MonoBehaviour
 		{
 			string json = JsonUtility.ToJson(ReplayInfo[i]);
 
-			string location = "Results/n" + i + ".txt";
+			string location = "Results/" + ReplayInfo[i].Name + ".txt";
 			System.IO.File.WriteAllText(location, json);
 		}
 		Debug.Log("全部輸出成功，共" + ReplayInfo.Count + "個");
@@ -483,7 +515,8 @@ public class ShootManager : MonoBehaviour
 				ReplayClass temp = JsonUtility.FromJson<ReplayClass>(txt);
 
 				ReplayInfo.Add(temp);
-				ReplayM.GenerateUIItem();
+				string[] stringList = temp.Name.Split('-');
+				ReplayM.GenerateUIItem(temp.Params.Power, temp.WinAreaNumber, int.Parse(stringList[stringList.Length - 1].Replace("n", "")));
 			},                                                                                  // 按下成功時 
 			delegate () { Debug.Log("Canceled"); },                                             // 取消
 			false,                                                                              // 是否選擇資料夾

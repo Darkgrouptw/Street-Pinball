@@ -276,7 +276,34 @@ public class ShootManager : MonoBehaviour
 							BallList.Add(temp);
 
 							// 加重播清單
-							ReplayInfo.Add(new ReplayClass());
+							ReplayClass replay = new ReplayClass();
+							replay.Params.Power = power;
+							replay.Params.PushPower = pushpower;
+							replay.Params.Angle = angle;
+
+							replay.Params.TopCapsuleList.Clear();
+							for (int i = 0; i < TopCapsuleList.Count; i++)
+							{
+								TopCapsuleRecord record = new TopCapsuleRecord();
+								record.HorizontalOffset = TopCapsuleList[i].HorizontalOffset;
+								record.VerticalOffset = TopCapsuleList[i].VerticalOffset;
+								replay.Params.TopCapsuleList.Add(record);
+							}
+
+							// 物理相關參數
+							replay.Params.TopcapsuleBounciness		= float.Parse(TopcapsuleBouncinessField.text);
+							replay.Params.TopcapsuleFraction		= float.Parse(TopcapsuleFractionField.text);
+							replay.Params.GroupBounciness			= float.Parse(GroupBouncinessField.text);
+							replay.Params.GroupFraction				= float.Parse(GroupFractionField.text);
+							replay.Params.BallBounciness			= float.Parse(BallBouncinessField.text);
+							replay.Params.BallFraction				= float.Parse(BallFractionField.text);
+							replay.Params.SeparateLineBounciness	= float.Parse(SeparateLineBouncinessField.text);
+							replay.Params.SeparateLineFraction		= float.Parse(SeparateLineFractionField.text);
+							replay.Params.Gravity					= float.Parse(GravityField.text);
+							replay.Params.HitPinBounciness			= float.Parse(HitPinBouncinessField.text);
+							replay.Params.HitPinFraction			= float.Parse(HitPinFractionField.text);
+							ReplayInfo.Add(replay);
+							//ReplayInfo.Add(new ReplayClass());
 
 							// 繼續
 							state = ShootAnimState.WAIT_FOR_SHOOT_ANIM;

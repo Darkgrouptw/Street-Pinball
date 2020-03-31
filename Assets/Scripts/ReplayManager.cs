@@ -79,7 +79,7 @@ public class ReplayManager : MonoBehaviour
 		// 拿底下所有的物件做更改
 		Transform[] trans = temp.GetComponentsInChildren<Transform>(true);
 		Text tempText = trans[1].gameObject.GetComponent<Text>();
-		string uiname = "n" + Power.ToString() + "-" + WinAreaNumber.ToString() + "-" + RecordIndex.ToString();
+		string uiname = Power.ToString() + "-" + WinAreaNumber.ToString() + "-n" + CurrentIndex.ToString();
 		tempText.text = uiname;
 		CurrentIndex = Mathf.Max(CurrentIndex, RecordIndex + 1);
 

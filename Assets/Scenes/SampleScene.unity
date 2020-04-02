@@ -3607,10 +3607,10 @@ RectTransform:
   m_Father: {fileID: 420629844}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 250, y: -35}
+  m_SizeDelta: {x: 500, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &517442003
 MonoBehaviour:
@@ -3878,6 +3878,7 @@ MonoBehaviour:
   WaitForShoot_Time: 1
   Freeze_Shoot_Time: 0.5
   Shoot_Time: 0.2
+  Delay_Time: 0.02
   WaitBall_Time: 2
   WinAreaNumber: 1
 --- !u!4 &568645447
@@ -4834,7 +4835,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 3.126e-42, y: 1.01e-43, z: 1e-45, w: 0}
+  m_BoundingSphereOverride: {x: 3.0092666e-36, y: 1.009742e-28, z: 0, w: 0}
   m_UseBoundingSphereOverride: 0
   m_ShadowRadius: 0
   m_ShadowAngle: 0

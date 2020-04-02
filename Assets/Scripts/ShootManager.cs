@@ -89,6 +89,7 @@ public class ShootManager : MonoBehaviour
 	public float WaitForShoot_Time = 1.5f;
 	public float Freeze_Shoot_Time = 0.5f;
 	public float Shoot_Time = 0.5f;
+	public float Delay_Time = 0.1f;
 	public float WaitBall_Time = 1;
 	private Vector3 LastBallPos;
 	private float TimeCounter = 0;														// 判斷狀態轉換的計數器
@@ -225,7 +226,7 @@ public class ShootManager : MonoBehaviour
 				}
 			case ShootAnimState.SHOOT_ANIM:
 				{
-					float t = Mathf.Clamp01(TimeCounter /= Shoot_Time);
+					float t = Mathf.Clamp01(Mathf.Max(TimeCounter - Delay_Time, 0) / (Shoot_Time - Delay_Time));
 					Pin.transform.position = Vector3.Lerp(Pin.transform.position, PinFirstPos, t * t * t);
 
 					// 判斷是否超過
@@ -255,6 +256,7 @@ public class ShootManager : MonoBehaviour
 						// 重播選單更新
 						ReplayInfo[ReplayInfo.Count - 1].WinAreaNumber = WinAreaNumber;
 						ReplayInfo[ReplayInfo.Count - 1].Name = ReplayM.GenerateUIItem(power, WinAreaNumber);
+						ReplayInfo[ReplayInfo.Count - 1].IsFinished = true;
 
 						if (currentTime == autoTime)
 						{
@@ -274,6 +276,11 @@ public class ShootManager : MonoBehaviour
 							GameObject temp = GameObject.Instantiate(BallList[0]);
 							temp.transform.position = BallFirstPos;
 							BallList.Add(temp);
+
+							// 隨機參數
+							float temp1 = float.Parse(Angle0Field.text);
+							float temp2 = float.Parse(Angle1Field.text);
+							angle = Random.Range(temp1, temp2);
 
 							// 加重播清單
 							ReplayClass replay = new ReplayClass();
@@ -520,14 +527,21 @@ public class ShootManager : MonoBehaviour
 	{
 		if (!System.IO.Directory.Exists("Results"))
 			System.IO.Directory.CreateDirectory("Results");
+		int IsNotFinished = 0;
 		for (int i = 0; i < ReplayInfo.Count; i++)
 		{
+			if (!ReplayInfo[i].IsFinished)
+			{
+				IsNotFinished++;
+				continue;
+			}
+
 			string json = JsonUtility.ToJson(ReplayInfo[i]);
 
 			string location = "Results/" + ReplayInfo[i].Name + ".txt";
 			System.IO.File.WriteAllText(location, json);
 		}
-		Debug.Log("全部輸出成功，共" + ReplayInfo.Count + "個");
+		Debug.Log("全部輸出成功，共" + (ReplayInfo.Count - IsNotFinished) + "個");
 	}
 	public void ImportFile()
 	{
@@ -542,8 +556,8 @@ public class ShootManager : MonoBehaviour
 				ReplayClass temp = JsonUtility.FromJson<ReplayClass>(txt);
 
 				ReplayInfo.Add(temp);
-				string[] stringList = temp.Name.Split('-');
-				ReplayM.GenerateUIItem(temp.Params.Power, temp.WinAreaNumber, int.Parse(stringList[stringList.Length - 1].Replace("n", "")));
+				//ReplayM.GenerateUIItem(temp.Params.Power, temp.WinAreaNumber, int.Parse(stringList[stringList.Length - 1].Replace("n", "")));
+				ReplayM.GenerateUIItem(temp.Name);
 			},                                                                                  // 按下成功時 
 			delegate () { Debug.Log("Canceled"); },                                             // 取消
 			false,                                                                              // 是否選擇資料夾

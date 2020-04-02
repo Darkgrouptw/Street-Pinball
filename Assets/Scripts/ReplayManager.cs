@@ -70,7 +70,7 @@ public class ReplayManager : MonoBehaviour
 		ReFocusUI();
 		return uiname;
 	}
-	public void GenerateUIItem(int Power, int WinAreaNumber, int RecordIndex)
+	public string GenerateUIItem(string name)
 	{
 		GameObject temp = GameObject.Instantiate(UIGroup);
 		temp.SetActive(true);
@@ -79,9 +79,8 @@ public class ReplayManager : MonoBehaviour
 		// 拿底下所有的物件做更改
 		Transform[] trans = temp.GetComponentsInChildren<Transform>(true);
 		Text tempText = trans[1].gameObject.GetComponent<Text>();
-		string uiname = Power.ToString() + "-" + WinAreaNumber.ToString() + "-n" + CurrentIndex.ToString();
-		tempText.text = uiname;
-		CurrentIndex = Mathf.Max(CurrentIndex, RecordIndex + 1);
+		tempText.text = name;
+		CurrentIndex++;
 
 		// Focus 事件
 		int tempIndex = CurrentIndex - 1;
@@ -115,9 +114,13 @@ public class ReplayManager : MonoBehaviour
 		// Focus 在最後一個
 		FocusIndex = UIGroupList.Count - 1;
 		ReFocusUI();
+		return name;
 	}
+
 	public void ReplayItemClick(int i)
 	{
+		
+
 		FocusIndex = i;
 		ReFocusUI();
 	}
@@ -145,5 +148,10 @@ public class ReplayManager : MonoBehaviour
 				temp.enabled = false;
 		}
 			
+	}
+	private int FindReplayIndexByName(string name)
+	{
+		//for(int i = 0; i < ShootM.)
+		return -1;
 	}
 }

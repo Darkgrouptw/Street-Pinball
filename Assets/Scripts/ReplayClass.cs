@@ -12,6 +12,10 @@ public class ReplayClass
 	public List<Vector2>	Velocity			= new List<Vector2>();
 	public ParamsClass		Params				= new ParamsClass();
 	public int				WinAreaNumber;
+
+
+	// 判斷是否彈射完成
+	public bool				IsFinished = false;
 }
 
 [System.Serializable]
